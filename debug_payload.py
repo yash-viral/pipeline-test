@@ -16,16 +16,16 @@ headers = {
     'Accept': 'application/vnd.github.v3+json'
 }
 
-# Simple test payload
+# Test with real repository from organization
 payload = {
     "event_type": "build-matrix",
     "client_payload": {
         "repos_json": [
             {
-                "repo_name": "test-repo",
+                "repo_name": "yash-ai-interviewer-frontend",
                 "version": "1.0",
                 "has_release": False,
-                "branch": "master"
+                "branch": "dev"
             }
         ],
         "max_parallel": 5

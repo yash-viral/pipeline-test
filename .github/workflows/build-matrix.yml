@@ -48,12 +48,8 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 5
       matrix:
         repo: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    
-    outputs:
-      image_tag: ${{ steps.build.outputs.image_tag }}
     
     steps:
     - name: Checkout CI repository
@@ -124,6 +120,5 @@ jobs:
     - name: Build Summary
       run: |
         echo "🎯 Matrix Build Summary"
-        echo "Total repositories processed: ${{ strategy.job-total }}"
-        echo "Successful builds: ${{ strategy.job-total - strategy.job-failed }}"
-        echo "Failed builds: ${{ strategy.job-failed }}"
+        echo "🎯 Matrix Build Summary"
+        echo "Build process completed"
