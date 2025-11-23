@@ -1,0 +1,20 @@
+name: Simple Build Matrix
+
+on:
+  repository_dispatch:
+    types: [build-matrix]
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Debug payload
+      run: |
+        echo "🚀 Build Matrix Triggered!"
+        echo "Event: ${{ github.event_name }}"
+        echo "Payload: ${{ toJson(github.event.client_payload) }}"
+        
+    - name: Test matrix data
+      run: |
+        echo "Repos JSON: ${{ toJson(github.event.client_payload.repos_json) }}"
