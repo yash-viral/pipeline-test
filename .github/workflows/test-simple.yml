@@ -1,0 +1,16 @@
+name: Test Simple Workflow
+
+on:
+  repository_dispatch:
+    types: [test-trigger]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Test step
+      run: |
+        echo "✅ Workflow is working!"
+        echo "Event: ${{ github.event_name }}"
+        echo "Repository: ${{ github.repository }}"

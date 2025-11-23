@@ -72,7 +72,10 @@ class GitHubBuildService:
     
     def trigger_matrix_build_workflow(self, repos_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Trigger GitHub Actions matrix workflow"""
-        dispatch_url = f"https://api.github.com/repos/{self.github_org}/yash-unified-license-backend/dispatches"
+        # Use your personal GitHub account for the workflow
+        github_username = os.getenv("GITHUB_USERNAME", "viral-maru")
+        repo_name = os.getenv("GITHUB_REPO_NAME", "pipeline-test")
+        dispatch_url = f"https://api.github.com/repos/{github_username}/{repo_name}/dispatches"
         
         payload = {
             "event_type": "build-matrix",
@@ -113,7 +116,7 @@ class GitHubBuildService:
             "agent_name": agent_name,
             "repo_name": repo_name,
             "repository_url": repo_url,
-            "branch": repository.repository_branch or "main"
+            "branch": repository.repository_branch or "dev"
         }
     
     def get_all_agents(self) -> List[Dict[str, Any]]:
