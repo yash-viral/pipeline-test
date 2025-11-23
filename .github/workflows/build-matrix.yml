@@ -48,7 +48,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: ${{ fromJson(inputs.max_parallel) }}
+      max-parallel: 5
       matrix:
         repo: ${{ fromJson(needs.prepare.outputs.matrix) }}
     
@@ -60,16 +60,6 @@ jobs:
       uses: actions/checkout@v3
       with:
         ref: ${{ github.ref }}
-    
-    - name: Load config.yaml into environment
-      run: |
-        while IFS=":" read -r key value; do
-          key=$(echo "$key" | xargs)
-          value=$(echo "$value" | xargs)
-          if [[ -n "$key" && -n "$value" ]]; then
-            echo "$key=$value" >> $GITHUB_ENV
-          fi
-        done < .github/config.yaml
     
     - name: Get repository code
       run: |
