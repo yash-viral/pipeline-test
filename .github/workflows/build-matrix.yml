@@ -39,7 +39,7 @@ jobs:
       id: set-matrix
       run: |
         if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-          echo "matrix=${{ toJson(github.event.client_payload.repos_json) }}" >> $GITHUB_OUTPUT
+          echo 'matrix=${{ toJson(github.event.client_payload.repos_json) }}' >> $GITHUB_OUTPUT
         else
           echo "matrix=${{ inputs.repos_json }}" >> $GITHUB_OUTPUT
         fi
