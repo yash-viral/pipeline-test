@@ -1,0 +1,5 @@
+# GitHub Actions Configuration
+DOCKER_REGISTRY: docker.io
+DOCKER_NAMESPACE: yashtech
+BUILD_TIMEOUT: 30m
+DEFAULT_BRANCH: main

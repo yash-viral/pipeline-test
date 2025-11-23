@@ -1,0 +1,139 @@
+name: Build Multiple Repositories (Matrix)
+
+permissions:
+  contents: write
+
+on:
+  repository_dispatch:
+    types: [build-matrix]
+  workflow_dispatch:
+    inputs:
+      repos_json:
+        description: 'JSON array of repositories to build'
+        required: true
+        type: string
+      max_parallel:
+        description: 'Maximum parallel jobs'
+        required: false
+        default: '5'
+        type: string
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - name: Debug workflow trigger
+      run: |
+        echo "🚀 Workflow triggered!"
+        echo "Event: ${{ github.event_name }}"
+        if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+          echo "Repository dispatch payload: ${{ toJson(github.event.client_payload) }}"
+        else
+          echo "Repos JSON: ${{ inputs.repos_json }}"
+          echo "Max parallel: ${{ inputs.max_parallel }}"
+        fi
+    
+    - name: Set matrix
+      id: set-matrix
+      run: |
+        if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+          echo "matrix=${{ toJson(github.event.client_payload.repos_json) }}" >> $GITHUB_OUTPUT
+        else
+          echo "matrix=${{ inputs.repos_json }}" >> $GITHUB_OUTPUT
+        fi
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: ${{ fromJson(inputs.max_parallel) }}
+      matrix:
+        repo: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+    
+    steps:
+    - name: Checkout CI repository
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.ref }}
+    
+    - name: Load config.yaml into environment
+      run: |
+        while IFS=":" read -r key value; do
+          key=$(echo "$key" | xargs)
+          value=$(echo "$value" | xargs)
+          if [[ -n "$key" && -n "$value" ]]; then
+            echo "$key=$value" >> $GITHUB_ENV
+          fi
+        done < .github/config.yaml
+    
+    - name: Get repository code
+      run: |
+        echo "Processing repository: ${{ matrix.repo.repo_name }}"
+        echo "Version: ${{ matrix.repo.version }}"
+        echo "Has release: ${{ matrix.repo.has_release }}"
+        
+        if [ "${{ matrix.repo.has_release }}" = "true" ]; then
+          echo "📦 Downloading release ZIP from: ${{ matrix.repo.zip_url }}"
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+               -o repo.zip "${{ matrix.repo.zip_url }}"
+          unzip repo.zip
+          
+          # Find the extracted directory
+          EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "*${{ matrix.repo.repo_name }}*" | head -1)
+          echo "Extracted directory: $EXTRACTED_DIR"
+          
+          # Move contents to standardized ./repo directory
+          mkdir -p ./repo
+          mv "$EXTRACTED_DIR"/* ./repo/ 2>/dev/null || true
+          mv "$EXTRACTED_DIR"/.[^.]* ./repo/ 2>/dev/null || true
+        else
+          echo "🔄 Cloning dev branch for repository without release"
+          git clone -b dev --single-branch \
+            https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/${{ matrix.repo.repo_name }}.git ./repo
+        fi
+        
+        echo "Repository contents:"
+        ls -la ./repo
+    
+    - name: Build Docker image
+      id: build
+      run: |
+        cd ./repo
+        
+        # Build image tag
+        IMAGE_TAG="${{ matrix.repo.repo_name }}:${{ matrix.repo.version }}"
+        
+        echo "Building Docker image with tag: $IMAGE_TAG"
+        
+        # Build the image
+        docker build -t "$IMAGE_TAG" .
+        
+        # Verify image was built
+        docker images | grep "${{ matrix.repo.repo_name }}"
+        
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "✅ Successfully built: ${{ matrix.repo.repo_name }}:${{ matrix.repo.version }}"
+    
+    - name: Output build results
+      run: |
+        echo "🎉 Build completed for ${{ matrix.repo.repo_name }}!"
+        echo "Repository: ${{ matrix.repo.repo_name }}"
+        echo "Version: ${{ matrix.repo.version }}"
+        echo "Image Tag: ${{ steps.build.outputs.image_tag }}"
+
+  summary:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Build Summary
+      run: |
+        echo "🎯 Matrix Build Summary"
+        echo "Total repositories processed: ${{ strategy.job-total }}"
+        echo "Successful builds: ${{ strategy.job-total - strategy.job-failed }}"
+        echo "Failed builds: ${{ strategy.job-failed }}"
